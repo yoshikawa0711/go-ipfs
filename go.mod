@@ -26,7 +26,6 @@ require (
 	github.com/ipfs/go-ds-flatfs v0.4.5
 	github.com/ipfs/go-ds-leveldb v0.4.2
 	github.com/ipfs/go-ds-measure v0.1.0
-	github.com/ipfs/go-fetcher v1.1.0
 	github.com/ipfs/go-filestore v0.0.3
 	github.com/ipfs/go-fs-lock v0.0.6
 	github.com/ipfs/go-graphsync v0.8.0
@@ -52,13 +51,14 @@ require (
 	github.com/ipfs/go-metrics-interface v0.0.1
 	github.com/ipfs/go-metrics-prometheus v0.0.2
 	github.com/ipfs/go-mfs v0.1.2
-	github.com/ipfs/go-path v0.0.10-0.20210325174225-7e4e7c9b6e0b
+	github.com/ipfs/go-path v0.0.10-0.20210326021800-49379d1308f1
 	github.com/ipfs/go-pinning-service-http-client v0.1.0
 	github.com/ipfs/go-unixfs v0.2.4
 	github.com/ipfs/go-verifcid v0.0.1
-	github.com/ipfs/interface-go-ipfs-core v0.4.1-0.20210324205557-4ec7cff08e9e
+	github.com/ipfs/interface-go-ipfs-core v0.4.1-0.20210326022702-98763dda3e52
 	github.com/ipld/go-car v0.2.1-0.20210312021557-7afab98d034f
 	github.com/ipld/go-ipld-prime v0.9.1-0.20210324083106-dc342a9917db
+	github.com/jbenet/go-fuse-version v0.0.0-20160322195114-6d4c97bcf253 // indirect
 	github.com/jbenet/go-is-domain v1.0.5
 	github.com/jbenet/go-random v0.0.0-20190219211222-123a90aedc0c
 	github.com/jbenet/go-temp-err-catcher v0.1.0
