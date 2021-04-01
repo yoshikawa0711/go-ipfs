@@ -112,3 +112,5 @@ require (
 )
 
 go 1.14
+
+replace github.com/ipld/go-codec-dagpb => github.com/mvdan/go-codec-dagpb v1.0.1-0.20210331192537-cb256d74616a
