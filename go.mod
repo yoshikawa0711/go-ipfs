@@ -20,12 +20,14 @@ require (
 	github.com/ipfs/go-blockservice v0.1.4
 	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-cidutil v0.0.2
+	github.com/ipfs/go-dagwriter v0.0.0-20210330014411-6fb9a511eaff
 	github.com/ipfs/go-datastore v0.4.5
 	github.com/ipfs/go-detect-race v0.0.1
 	github.com/ipfs/go-ds-badger v0.2.6
 	github.com/ipfs/go-ds-flatfs v0.4.5
 	github.com/ipfs/go-ds-leveldb v0.4.2
 	github.com/ipfs/go-ds-measure v0.1.0
+	github.com/ipfs/go-fetcher v1.1.1-0.20210401195604-7fc88c4425ce
 	github.com/ipfs/go-filestore v0.0.3
 	github.com/ipfs/go-fs-lock v0.0.6
 	github.com/ipfs/go-graphsync v0.8.0
@@ -51,12 +53,12 @@ require (
 	github.com/ipfs/go-metrics-interface v0.0.1
 	github.com/ipfs/go-metrics-prometheus v0.0.2
 	github.com/ipfs/go-mfs v0.1.2
-	github.com/ipfs/go-path v0.0.10-0.20210401223214-86efdc232ec7
+	github.com/ipfs/go-path v0.0.10-0.20210402180731-65ea0519792c
 	github.com/ipfs/go-pinning-service-http-client v0.1.0
 	github.com/ipfs/go-unixfs v0.2.4
 	github.com/ipfs/go-unixfsnode v1.0.1-0.20210401222528-d6733f6db694
 	github.com/ipfs/go-verifcid v0.0.1
-	github.com/ipfs/interface-go-ipfs-core v0.4.1-0.20210326022702-98763dda3e52
+	github.com/ipfs/interface-go-ipfs-core v0.4.1-0.20210402182121-8f87b20d4be7
 	github.com/ipld/go-car v0.2.1-0.20210312021557-7afab98d034f
 	github.com/ipld/go-ipld-prime v0.9.1-0.20210324083106-dc342a9917db
 	github.com/jbenet/go-is-domain v1.0.5

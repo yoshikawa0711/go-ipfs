@@ -19,14 +19,17 @@ import (
 	"fmt"
 
 	bserv "github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-exchange-interface"
+	"github.com/ipfs/go-dagwriter"
+	"github.com/ipfs/go-fetcher"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	offlinexch "github.com/ipfs/go-ipfs-exchange-offline"
-	"github.com/ipfs/go-ipfs-pinner"
-	"github.com/ipfs/go-ipfs-provider"
+	pin "github.com/ipfs/go-ipfs-pinner"
+	provider "github.com/ipfs/go-ipfs-provider"
 	offlineroute "github.com/ipfs/go-ipfs-routing/offline"
 	ipld "github.com/ipfs/go-ipld-format"
 	dag "github.com/ipfs/go-merkledag"
+	"github.com/ipfs/go-unixfsnode"
 	coreiface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
@@ -54,9 +57,10 @@ type CoreAPI struct {
 	baseBlocks blockstore.Blockstore
 	pinning    pin.Pinner
 
-	blocks bserv.BlockService
-	dag    ipld.DAGService
-
+	blocks          bserv.BlockService
+	dag             ipld.DAGService
+	fetcherConfig   fetcher.FetcherConfig
+	dagWriter       dagwriter.DagWritingService
 	peerstore       pstore.Peerstore
 	peerHost        p2phost.Host
 	recordValidator record.Validator
@@ -102,6 +106,19 @@ func (api *CoreAPI) Dag() coreiface.APIDagService {
 	return &dagAPI{
 		api.dag,
 		api,
+	}
+}
+
+type nodeAPI struct {
+	fetcher.FetcherConfig
+	dagwriter.DagWritingService
+}
+
+// Node returns the Node interface implementation backed by the go-ipfs node
+func (api *CoreAPI) Node() coreiface.NodeAPI {
+	return &nodeAPI{
+		api.fetcherConfig,
+		api.dagWriter,
 	}
 }
 
@@ -182,6 +199,10 @@ func (api *CoreAPI) WithOptions(opts ...options.ApiOption) (coreiface.CoreAPI, e
 		nd:         n,
 		parentOpts: settings,
 	}
+
+	subApi.fetcherConfig = fetcher.NewFetcherConfig(subApi.blocks)
+	subApi.fetcherConfig.AugmentChooser = unixfsnode.AugmentPrototypeChooser
+	subApi.dagWriter = dagwriter.NewDagWriter(subApi.blocks)
 
 	subApi.checkOnline = func(allowOffline bool) error {
 		if !n.IsOnline && !allowOffline {
