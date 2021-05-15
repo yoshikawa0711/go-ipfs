@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+which ipfs
+pwd
+ls -al
+
 test_description="Test sharness tests are correctly written"
 
 . lib/test-lib.sh
