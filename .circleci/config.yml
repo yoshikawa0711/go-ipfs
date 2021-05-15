@@ -33,7 +33,7 @@ default_environment: &default_environment
 executors:
   golang:
     docker:
-      - image: circleci/golang:1.16.3
+      - image: cimg/go:1.16.4
     working_directory: ~/ipfs/go-ipfs
     environment:
       <<: *default_environment
@@ -60,7 +60,7 @@ executors:
       E2E_IPFSD_TYPE: go
   dockerizer:
     docker:
-      - image: circleci/golang:1.16.3
+      - image: cimg/go:1.16.4
     environment:
       IMAGE_NAME: ipfs/go-ipfs
       WIP_IMAGE_TAG: wip
@@ -129,39 +129,53 @@ jobs:
         GOPATH: /home/circleci/go
         TEST_VERBOSE: 1
     steps:
-    - run: sudo apt update
+    # - run: sudo apt update
+    - run: go version
+    - run: go env
     - run: |
         mkdir ~/localgo && cd ~/localgo
-        wget https://golang.org/dl/go1.15.3.linux-amd64.tar.gz
-        tar xfz go1.15.3.linux-amd64.tar.gz
+        wget https://golang.org/dl/go1.16.4.linux-amd64.tar.gz
+        tar xfz go1.16.4.linux-amd64.tar.gz
         echo "export PATH=$(pwd)/go/bin:$PATH" >> $BASH_ENV
     - run: go version
-    - run: sudo apt install socat net-tools
+    - run: go env
+    # - run: sudo apt install socat net-tools
     - checkout
 
-    - run:
-        mkdir rb-pinning-service-api &&
-        cd rb-pinning-service-api &&
-        git init &&
-        git remote add origin  https://github.com/ipfs-shipyard/rb-pinning-service-api.git &&
-        git fetch --depth 1 origin 773c3adbb421c551d2d89288abac3e01e1f7c3a8 &&
-        git checkout FETCH_HEAD
-    - run:
-        cd rb-pinning-service-api &&
-        docker-compose pull &&
-        docker-compose up -d
+    - run: which ipfs || true
+    # - run:
+    #     mkdir rb-pinning-service-api &&
+    #     cd rb-pinning-service-api &&
+    #     git init &&
+    #     git remote add origin  https://github.com/ipfs-shipyard/rb-pinning-service-api.git &&
+    #     git fetch --depth 1 origin 773c3adbb421c551d2d89288abac3e01e1f7c3a8 &&
+    #     git checkout FETCH_HEAD
+    # - run:
+    #     cd rb-pinning-service-api &&
+    #     docker-compose pull &&
+    #     docker-compose up -d
 
-    - *make_out_dirs
-    - *restore_gomod
+    # - *make_out_dirs
+    # - *restore_gomod
 
     - run:
         name: Setup Environment Variables
         # we need the docker host IP; all ports exported by child containers can be accessed there.
         command: echo "export DOCKER_HOST=$(ip -4 addr show docker0 | grep -Po 'inet \K[\d.]+')" >> $BASH_ENV
+    - run: which ipfs || true
+    - run: echo $PATH $GOPATH $GOBIN
+    - run: ls -lah /home/circleci/go/bin || true
+    - run: ls -lah /home/circleci/.go_workspace/bin || true
+    - run: make install
+    - run: ls -lah /home/circleci/go/bin || true
+    - run: ls -lah /home/circleci/.go_workspace/bin || true
+    - run: which ipfs || true
     - run:
         echo DOCKER_HOST=$DOCKER_HOST &&
         make -O -j 3 coverage/sharness_tests.coverprofile test/sharness/test-results/sharness.xml TEST_GENERATE_JUNIT=1 CONTINUE_ON_S_FAILURE=1 DOCKER_HOST=$DOCKER_HOST
-        which ipfs
+    - run:
+        when: always
+        command: which ipfs || true
     - run:
         when: always
         command: bash <(curl -s https://codecov.io/bash) -cF sharness -X search -f coverage/sharness_tests.coverprofile
