@@ -15,7 +15,7 @@ ipfs swarm addrs > /dev/null || (echo "daemon not running" && exit 1)
 # *always* added to the repo (DAG service). What is or isn't added are all
 # the parent entries (`/` and `/cats/`; we use `/cats/` because we don't
 # control nor assume what other contents live in MFS during the test).
-HASH=QmdRermQqYC89pZr1pP5wGbSsusxhnTVfEkJMGXNSeHYbQ
+HASH=QmZXn9Z1bgJymYnn5sywj9bd98trtWtdJ5rZcSSW2ZvzxA
 
 # Test if $HASH is present ($1=1) or absent ($1=0) in the repo
 # and fail with error string $2 if not.
@@ -47,7 +47,11 @@ echo "testing" | ipfs files write -f=false -e /cats/walrus
 
 test_hash 0 "hash is present after write with no flush (is the daemon running?)"
 
-ipfs files stat --hash /cats/walrus # stat flushes
+# We stat the parent directory and not the  file itself as stat will trigger a
+# *downward* sync only, because we are tracking the hash of parent directory
+# `/cats/` not just the inner file `/cats/walrus`. (Similar to the original
+# test that stats the entire MFS root instead.)
+ipfs files stat --hash /cats
 
 test_hash 1 "hash is not present after stat"
 

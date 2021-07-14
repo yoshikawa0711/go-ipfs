@@ -521,12 +521,10 @@ test_files_api() {
     test_expect_code 1 grep $ROOT_HASH refsout)
   '
 
-  # FIXME: Does this mean the stat is supposed to flush this?
-  # The stat code seems to be an ad-hoc tool that works on the UnixFS
-  # layer and not on the MFS one that handles flushing.
-  # Maybe the MFS lookup function that ends up calling
-  # `(*mfs.Directory).GetNode()` and then `(*Directory).sync()`.
-  # This is not exactly the same as `(*Directory).Flush()`.
+  # Call the stat command on `/` to sync the entire tree. The command
+  # will call `(*mfs.Directory).GetNode()` (and hence `(*Directory).sync()`)
+  # on the MFS root and its children recursively. This will in fact sync
+  # the not-flushed contents of `/cats/walrus` above.
   test_expect_success "changes bubbled up to root on inspection $EXTRA" '
     ipfs files stat --hash / > root_hash
   '
