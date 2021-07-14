@@ -9,7 +9,13 @@ set -e
 ipfs swarm addrs > /dev/null || (echo "daemon not running" && exit 1)
 # FIXME: Is there a nice way to check this?
 
-HASH=QmNzVQoBR7wQjSNXFrcJHZ29PMsEDfF6iZB1QEhKD4uZpV
+# Hash of `/cats` directory after writing the `/cats/walrus/` file used
+# to check if the flush happened or not. We do not take the hash of `walrus`
+# itself because even if flush is disabled the node of the file itself is
+# *always* added to the repo (DAG service). What is or isn't added are all
+# the parent entries (`/` and `/cats/`; we use `/cats/` because we don't
+# control nor assume what other contents live in MFS during the test).
+HASH=QmdRermQqYC89pZr1pP5wGbSsusxhnTVfEkJMGXNSeHYbQ
 
 # Test if $HASH is present ($1=1) or absent ($1=0) in the repo
 # and fail with error string $2 if not.
