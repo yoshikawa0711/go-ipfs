@@ -216,6 +216,7 @@ func TestCommands(t *testing.T) {
 		"/repo",
 		"/repo/fsck",
 		"/repo/gc",
+		"/repo/migrate",
 		"/repo/stat",
 		"/repo/verify",
 		"/repo/version",
