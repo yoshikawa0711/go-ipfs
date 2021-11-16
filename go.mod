@@ -114,3 +114,5 @@ require (
 )
 
 go 1.16
+
+replace github.com/ipfs/interface-go-ipfs-core => ../interface-go-ipfs-core

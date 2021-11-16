@@ -176,6 +176,9 @@ other than 'sha2-256' or format to anything other than 'v0' will result in CIDv1
 
 			p, err := api.Block().Put(req.Context, file,
 				options.Block.Hash(mhtval, mhlen),
+				// FIXME: "Format" is actually *codec*. This is what eventually
+				//  will be used as a key in the `go-cid` codec list in:
+				//  https://github.com/ipfs/go-cid/blob/5640b01/cid.go#L85-L112
 				options.Block.Format(format),
 				options.Block.Pin(pin))
 			if err != nil {

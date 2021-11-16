@@ -51,6 +51,8 @@ func dagPut(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) e
 
 	cidPrefix := cid.Prefix{
 		Version:  1,
+		// FIXME: `scodec.Set` will accept any multicodec, tag==ipld (codec)
+		//  or not.
 		Codec:    uint64(scodec),
 		MhType:   uint64(mhType),
 		MhLength: -1,
