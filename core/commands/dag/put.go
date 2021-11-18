@@ -36,14 +36,19 @@ func dagPut(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) e
 	hash, _ := req.Options["hash"].(string)
 	dopin, _ := req.Options["pin"].(bool)
 
+	// Codec used to decode provided input.
 	var icodec mc.Code
 	if err := icodec.Set(inputCodec); err != nil {
 		return err
 	}
+	// The store codec (`scodec`) is used for the actual encoding (`LookupEncoder`)
+	//  and also for the CID prefix (there is a coupling here where we need to
+	//  make sure those two are in sync).
 	var scodec mc.Code
 	if err := scodec.Set(storeCodec); err != nil {
 		return err
 	}
+	// Multihash type used to hash the re-encoded input data.
 	var mhType mc.Code
 	if err := mhType.Set(hash); err != nil {
 		return err
@@ -52,7 +57,8 @@ func dagPut(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) e
 	cidPrefix := cid.Prefix{
 		Version:  1,
 		// FIXME: `scodec.Set` will accept any multicodec, tag==ipld (codec)
-		//  or not.
+		//  or not. We actually want to use a very reduced set of multicodecs
+		//  here, see https://github.com/multiformats/multicodec/issues/242.
 		Codec:    uint64(scodec),
 		MhType:   uint64(mhType),
 		MhLength: -1,
