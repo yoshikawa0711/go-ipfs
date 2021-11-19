@@ -117,6 +117,7 @@ func (NodeProvider) MakeAPISwarm(ctx context.Context, fullIdentity bool, n int) 
 	return apis, nil
 }
 
+// The tests for the core interface are run here.
 func TestIface(t *testing.T) {
 	tests.TestApi(&NodeProvider{})(t)
 }
