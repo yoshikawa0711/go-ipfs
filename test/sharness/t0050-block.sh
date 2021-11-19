@@ -39,6 +39,12 @@ test_expect_success "'ipfs block put' output looks good" '
   test_cmp expected_out actual_out
 '
 
+# FIXME: Add new test for store codec here.
+
+test_expect_success "can set cid store codec on block put" '
+  HASH=$(ipfs block put --store-codec=dag-pb ../t0051-object-data/testPut.pb)
+'
+
 #
 # "block get" tests
 #
