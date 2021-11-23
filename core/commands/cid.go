@@ -13,6 +13,8 @@ import (
 	verifcid "github.com/ipfs/go-verifcid"
 	mbase "github.com/multiformats/go-multibase"
 	mhash "github.com/multiformats/go-multihash"
+	mc "github.com/multiformats/go-multicodec"
+	"github.com/ipld/go-ipld-prime/multicodec"
 )
 
 var CidCmd = &cmds.Command{
@@ -305,12 +307,24 @@ var codecsCmd = &cmds.Command{
 	},
 	Options: []cmds.Option{
 		cmds.BoolOption(codecsNumericOptionName, "also include numeric codes"),
+		// FIXME: Add a `--supported` flag that lists which codecs are known
+		//  to go-ipfs.
 	},
 	Run: func(req *cmds.Request, resp cmds.ResponseEmitter, env cmds.Environment) error {
 		var res []CodeAndName
-		// use CodecToStr as there are multiple names for a given code
-		for code, name := range cid.CodecToStr {
-			res = append(res, CodeAndName{int(code), name})
+		// FIXME: Use new IPLD/multicodec table. Depends on
+		//  https://github.com/multiformats/go-multicodec/issues/58.
+		//  For now we use the codes from the global IPLD register thar were
+		//  actually intended for the `--supported` flag.
+		codecs := make(map[uint64]struct{})
+		for _, code := range multicodec.ListEncoders() {
+			codecs[code] = struct{}{}
+		}
+		for _, code := range multicodec.ListDecoders() {
+			codecs[code] = struct{}{}
+		}
+		for code, _ := range codecs {
+			res = append(res, CodeAndName{int(code), mc.Code(code).String()})
 		}
 		return cmds.EmitOnce(resp, res)
 	},
