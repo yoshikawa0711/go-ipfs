@@ -22,3 +22,18 @@ We want to be able to split/filter multicodec tags as discussed in https://githu
 
 First stab at adding a store codec in block put: https://github.com/ipfs/interface-go-ipfs-core/pull/80
 
+## ipfs cid codecs
+
+From issue:
+
+> ipfs cid codecs should contain a --supported flag that lists which codecs are known to go-ipfs per Enumerate available encodings for dag get #8171 (review). This has some tradeoffs if different commands support different subsets of codecs, but for now this seems reasonable.
+
+> To support ipfs cid codecs --supported we can for now leverage the ipld-prime global codec registry https://github.com/ipld/go-ipld-prime/blob/b9a89e847312334af141788b303fd78b4f076fe3/multicodec/defaultRegistry.go#L23
+
+
+> To support ipfs cid codecs we need a list of all the IPLD codecs. This list can either be manually generated (as it is in go-cid), or a likely better approach is to modify https://github.com/multiformats/go-multicodec to allow retrieving codes by type (e.g. the IPLD type). WDYT @mvdan ?
+
+> This could then be leveraged inside of go-cid to generate the list of CIDs on init by depending on go-multicodec
+
+
+
