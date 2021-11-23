@@ -334,7 +334,7 @@ var codecsCmd = &cmds.Command{
 			sort.Sort(codeAndNameSorter{val})
 			for _, v := range val {
 				if numeric {
-					fmt.Fprintf(w, "%5d  %s\n", v.Code, v.Name)
+					fmt.Fprintf(w, "%7d  %s\n", v.Code, v.Name)
 				} else {
 					fmt.Fprintf(w, "%s\n", v.Name)
 				}
