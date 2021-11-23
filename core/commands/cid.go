@@ -323,7 +323,7 @@ var codecsCmd = &cmds.Command{
 		for _, code := range multicodec.ListDecoders() {
 			codecs[code] = struct{}{}
 		}
-		for code, _ := range codecs {
+		for code := range codecs {
 			res = append(res, CodeAndName{int(code), mc.Code(code).String()})
 		}
 		return cmds.EmitOnce(resp, res)
