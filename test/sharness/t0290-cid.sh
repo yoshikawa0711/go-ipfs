@@ -145,6 +145,16 @@ cat <<EOF > codecs_expect
   512  json
 EOF
 
+cat <<EOF > supported_codecs_expect
+   81  cbor
+   85  raw
+  112  dag-pb
+  113  dag-cbor
+  120  git-raw
+  297  dag-json
+  512  json
+EOF
+
 cat <<EOF > hashes_expect
     0  identity
    17  sha1
@@ -246,6 +256,17 @@ test_expect_success "cid codecs" '
 test_expect_success "cid codecs --numeric" '
   ipfs cid codecs --numeric > actual &&
   test_cmp codecs_expect actual
+'
+
+test_expect_success "cid codecs --supported" '
+  cut -c 8- supported_codecs_expect > expect &&
+  ipfs cid codecs --supported > actual
+  test_cmp expect actual
+'
+
+test_expect_success "cid codecs --supported --numeric" '
+  ipfs cid codecs --supported --numeric > actual &&
+  test_cmp supported_codecs_expect actual
 '
 
 test_expect_success "cid hashes" '
