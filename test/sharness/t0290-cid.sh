@@ -102,91 +102,122 @@ z   122  base58btc
 Z    90  base58flickr
 EOF
 
-# FIXME: Update this list.
 cat <<EOF > codecs_expect
-     81  cbor
-     85  raw
-    112  dag-pb
-    113  dag-cbor
-    120  git-raw
-    297  dag-json
-    512  json
-3145848  Code(3145848)
+   81  cbor
+   85  raw
+  112  dag-pb
+  113  dag-cbor
+  114  libp2p-key
+  120  git-raw
+  123  torrent-info
+  124  torrent-file
+  129  leofcoin-block
+  130  leofcoin-tx
+  131  leofcoin-pr
+  133  dag-jose
+  134  dag-cose
+  144  eth-block
+  145  eth-block-list
+  146  eth-tx-trie
+  147  eth-tx
+  148  eth-tx-receipt-trie
+  149  eth-tx-receipt
+  150  eth-state-trie
+  151  eth-account-snapshot
+  152  eth-storage-trie
+  153  eth-receipt-log-trie
+  154  eth-reciept-log
+  176  bitcoin-block
+  177  bitcoin-tx
+  178  bitcoin-witness-commitment
+  192  zcash-block
+  193  zcash-tx
+  208  stellar-block
+  209  stellar-tx
+  224  decred-block
+  225  decred-tx
+  240  dash-block
+  241  dash-tx
+  250  swarm-manifest
+  251  swarm-feed
+  297  dag-json
+  496  swhid-1-snp
+  512  json
 EOF
 
 cat <<EOF > hashes_expect
-      0  identity
-     17  sha1
-     18  sha2-256
-     19  sha2-512
-     20  sha3-512
-     21  sha3-384
-     22  sha3-256
-     23  sha3-224
-     25  shake-256
-     26  keccak-224
-     27  keccak-256
-     28  keccak-384
-     29  keccak-512
-     86  dbl-sha2-256
-  45588  blake2b-160
-  45589  blake2b-168
-  45590  blake2b-176
-  45591  blake2b-184
-  45592  blake2b-192
-  45593  blake2b-200
-  45594  blake2b-208
-  45595  blake2b-216
-  45596  blake2b-224
-  45597  blake2b-232
-  45598  blake2b-240
-  45599  blake2b-248
-  45600  blake2b-256
-  45601  blake2b-264
-  45602  blake2b-272
-  45603  blake2b-280
-  45604  blake2b-288
-  45605  blake2b-296
-  45606  blake2b-304
-  45607  blake2b-312
-  45608  blake2b-320
-  45609  blake2b-328
-  45610  blake2b-336
-  45611  blake2b-344
-  45612  blake2b-352
-  45613  blake2b-360
-  45614  blake2b-368
-  45615  blake2b-376
-  45616  blake2b-384
-  45617  blake2b-392
-  45618  blake2b-400
-  45619  blake2b-408
-  45620  blake2b-416
-  45621  blake2b-424
-  45622  blake2b-432
-  45623  blake2b-440
-  45624  blake2b-448
-  45625  blake2b-456
-  45626  blake2b-464
-  45627  blake2b-472
-  45628  blake2b-480
-  45629  blake2b-488
-  45630  blake2b-496
-  45631  blake2b-504
-  45632  blake2b-512
-  45652  blake2s-160
-  45653  blake2s-168
-  45654  blake2s-176
-  45655  blake2s-184
-  45656  blake2s-192
-  45657  blake2s-200
-  45658  blake2s-208
-  45659  blake2s-216
-  45660  blake2s-224
-  45661  blake2s-232
-  45662  blake2s-240
-  45663  blake2s-248
-  45664  blake2s-256
+    0  identity
+   17  sha1
+   18  sha2-256
+   19  sha2-512
+   20  sha3-512
+   21  sha3-384
+   22  sha3-256
+   23  sha3-224
+   25  shake-256
+   26  keccak-224
+   27  keccak-256
+   28  keccak-384
+   29  keccak-512
+   86  dbl-sha2-256
+45588  blake2b-160
+45589  blake2b-168
+45590  blake2b-176
+45591  blake2b-184
+45592  blake2b-192
+45593  blake2b-200
+45594  blake2b-208
+45595  blake2b-216
+45596  blake2b-224
+45597  blake2b-232
+45598  blake2b-240
+45599  blake2b-248
+45600  blake2b-256
+45601  blake2b-264
+45602  blake2b-272
+45603  blake2b-280
+45604  blake2b-288
+45605  blake2b-296
+45606  blake2b-304
+45607  blake2b-312
+45608  blake2b-320
+45609  blake2b-328
+45610  blake2b-336
+45611  blake2b-344
+45612  blake2b-352
+45613  blake2b-360
+45614  blake2b-368
+45615  blake2b-376
+45616  blake2b-384
+45617  blake2b-392
+45618  blake2b-400
+45619  blake2b-408
+45620  blake2b-416
+45621  blake2b-424
+45622  blake2b-432
+45623  blake2b-440
+45624  blake2b-448
+45625  blake2b-456
+45626  blake2b-464
+45627  blake2b-472
+45628  blake2b-480
+45629  blake2b-488
+45630  blake2b-496
+45631  blake2b-504
+45632  blake2b-512
+45652  blake2s-160
+45653  blake2s-168
+45654  blake2s-176
+45655  blake2s-184
+45656  blake2s-192
+45657  blake2s-200
+45658  blake2s-208
+45659  blake2s-216
+45660  blake2s-224
+45661  blake2s-232
+45662  blake2s-240
+45663  blake2s-248
+45664  blake2s-256
 EOF
 
 test_expect_success "cid bases" '
@@ -207,7 +238,7 @@ test_expect_success "cid bases --prefix --numeric" '
 '
 
 test_expect_success "cid codecs" '
-  cut -c 10- codecs_expect > expect &&
+  cut -c 8- codecs_expect > expect &&
   ipfs cid codecs > actual
   test_cmp expect actual
 '
@@ -218,7 +249,7 @@ test_expect_success "cid codecs --numeric" '
 '
 
 test_expect_success "cid hashes" '
-  cut -c 10- hashes_expect > expect &&
+  cut -c 8- hashes_expect > expect &&
   ipfs cid hashes > actual
   test_cmp expect actual
 '
