@@ -96,6 +96,9 @@ type FSRepo struct {
 	closed bool
 	// path is the file-system path
 	path string
+	// Path to the configuration file that may or may not be inside the FSRepo
+	// path (see config.Filename for more details).
+	configFilePath string
 	// lockfile is the file system lock to prevent others from opening
 	// the same fsrepo path concurrently
 	lockfile io.Closer
@@ -111,16 +114,25 @@ var _ repo.Repo = (*FSRepo)(nil)
 // initialized.
 func Open(repoPath string) (repo.Repo, error) {
 	fn := func() (repo.Repo, error) {
-		return open(repoPath)
+		return open(repoPath, "")
 	}
 	return onlyOne.Open(repoPath, fn)
 }
 
-func open(repoPath string) (repo.Repo, error) {
+// OpenWithUserConfig is the equivalent to the Open function above but with the
+// option to set the configuration file path instead of using the default.
+func OpenWithUserConfig(repoPath string, userConfigFilePath string) (repo.Repo, error) {
+	fn := func() (repo.Repo, error) {
+		return open(repoPath, userConfigFilePath)
+	}
+	return onlyOne.Open(repoPath, fn)
+}
+
+func open(repoPath string, userConfigFilePath string) (repo.Repo, error) {
 	packageLock.Lock()
 	defer packageLock.Unlock()
 
-	r, err := newFSRepo(repoPath)
+	r, err := newFSRepo(repoPath, userConfigFilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -185,13 +197,19 @@ func open(repoPath string) (repo.Repo, error) {
 	return r, nil
 }
 
-func newFSRepo(rpath string) (*FSRepo, error) {
+func newFSRepo(rpath string, userConfigFilePath string) (*FSRepo, error) {
 	expPath, err := homedir.Expand(filepath.Clean(rpath))
 	if err != nil {
 		return nil, err
 	}
 
-	return &FSRepo{path: expPath}, nil
+	configFilePath, err := config.Filename(rpath, userConfigFilePath)
+	if err != nil {
+		// FIXME: Personalize this when the user config path is "".
+		return nil, fmt.Errorf("finding config filepath from repo %s and user config %s: %w",
+			rpath, userConfigFilePath, err)
+	}
+	return &FSRepo{path: expPath, configFilePath: configFilePath}, nil
 }
 
 func checkInitialized(path string) error {
@@ -214,7 +232,7 @@ func ConfigAt(repoPath string) (*config.Config, error) {
 	packageLock.Lock()
 	defer packageLock.Unlock()
 
-	configFilename, err := config.Filename(repoPath)
+	configFilename, err := config.Filename(repoPath, "")
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +242,7 @@ func ConfigAt(repoPath string) (*config.Config, error) {
 // configIsInitialized returns true if the repo is initialized at
 // provided |path|.
 func configIsInitialized(path string) bool {
-	configFilename, err := config.Filename(path)
+	configFilename, err := config.Filename(path, "")
 	if err != nil {
 		return false
 	}
@@ -238,7 +256,7 @@ func initConfig(path string, conf *config.Config) error {
 	if configIsInitialized(path) {
 		return nil
 	}
-	configFilename, err := config.Filename(path)
+	configFilename, err := config.Filename(path, "")
 	if err != nil {
 		return err
 	}
@@ -388,11 +406,7 @@ func (r *FSRepo) SetAPIAddr(addr ma.Multiaddr) error {
 
 // openConfig returns an error if the config file is not present.
 func (r *FSRepo) openConfig() error {
-	configFilename, err := config.Filename(r.path)
-	if err != nil {
-		return err
-	}
-	conf, err := serialize.Load(configFilename)
+	conf, err := serialize.Load(r.configFilePath)
 	if err != nil {
 		return err
 	}
@@ -523,12 +537,7 @@ func (r *FSRepo) BackupConfig(prefix string) (string, error) {
 	}
 	defer temp.Close()
 
-	configFilename, err := config.Filename(r.path)
-	if err != nil {
-		return "", err
-	}
-
-	orig, err := os.OpenFile(configFilename, os.O_RDONLY, 0600)
+	orig, err := os.OpenFile(r.configFilePath, os.O_RDONLY, 0600)
 	if err != nil {
 		return "", err
 	}
@@ -562,15 +571,11 @@ func (r *FSRepo) SetConfig(updated *config.Config) error {
 	packageLock.Lock()
 	defer packageLock.Unlock()
 
-	configFilename, err := config.Filename(r.path)
-	if err != nil {
-		return err
-	}
 	// to avoid clobbering user-provided keys, must read the config from disk
 	// as a map, write the updated struct values to the map and write the map
 	// to disk.
 	var mapconf map[string]interface{}
-	if err := serialize.ReadConfigFile(configFilename, &mapconf); err != nil {
+	if err := serialize.ReadConfigFile(r.configFilePath, &mapconf); err != nil {
 		return err
 	}
 	m, err := config.ToMap(updated)
@@ -578,7 +583,7 @@ func (r *FSRepo) SetConfig(updated *config.Config) error {
 		return err
 	}
 	mergedMap := common.MapMergeDeep(mapconf, m)
-	if err := serialize.WriteConfigFile(configFilename, mergedMap); err != nil {
+	if err := serialize.WriteConfigFile(r.configFilePath, mergedMap); err != nil {
 		return err
 	}
 	// Do not use `*r.config = ...`. This will modify the *shared* config
@@ -596,12 +601,8 @@ func (r *FSRepo) GetConfigKey(key string) (interface{}, error) {
 		return nil, errors.New("repo is closed")
 	}
 
-	filename, err := config.Filename(r.path)
-	if err != nil {
-		return nil, err
-	}
 	var cfg map[string]interface{}
-	if err := serialize.ReadConfigFile(filename, &cfg); err != nil {
+	if err := serialize.ReadConfigFile(r.configFilePath, &cfg); err != nil {
 		return nil, err
 	}
 	return common.MapGetKV(cfg, key)
@@ -616,13 +617,9 @@ func (r *FSRepo) SetConfigKey(key string, value interface{}) error {
 		return errors.New("repo is closed")
 	}
 
-	filename, err := config.Filename(r.path)
-	if err != nil {
-		return err
-	}
 	// Load into a map so we don't end up writing any additional defaults to the config file.
 	var mapconf map[string]interface{}
-	if err := serialize.ReadConfigFile(filename, &mapconf); err != nil {
+	if err := serialize.ReadConfigFile(r.configFilePath, &mapconf); err != nil {
 		return err
 	}
 
@@ -652,7 +649,7 @@ func (r *FSRepo) SetConfigKey(key string, value interface{}) error {
 	}
 	r.config = conf
 
-	if err := serialize.WriteConfigFile(filename, mapconf); err != nil {
+	if err := serialize.WriteConfigFile(r.configFilePath, mapconf); err != nil {
 		return err
 	}
 
