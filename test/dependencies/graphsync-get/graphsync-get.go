@@ -34,13 +34,14 @@ func newGraphsync(ctx context.Context, p2p host.Host, bs blockstore.Blockstore) 
 	network := network.NewFromLibp2pHost(p2p)
 	return gsimpl.New(ctx,
 		network,
-		storeutil.LoaderForBlockstore(bs),
-		storeutil.StorerForBlockstore(bs),
+		storeutil.LinkSystemForBlockstore(bs),
+		// storeutil.LoaderForBlockstore(bs),
+		// storeutil.StorerForBlockstore(bs),
 	), nil
 }
 
 var selectAll ipld.Node = func() ipld.Node {
-	ssb := builder.NewSelectorSpecBuilder(basicnode.Style.Any)
+	ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
 	return ssb.ExploreRecursive(
 		ipldselector.RecursionLimitDepth(100), // default max
 		ssb.ExploreAll(ssb.ExploreRecursiveEdge()),
@@ -93,10 +94,11 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	p2p, err := libp2p.New(ctx, libp2p.NoListenAddrs)
+	p2p, err := libp2p.New(libp2p.NoListenAddrs)
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer p2p.Close()
 	err = p2p.Connect(ctx, *ai)
 	if err != nil {
 		log.Fatal(err)

@@ -12,6 +12,7 @@ require (
 	github.com/fsnotify/fsnotify v1.5.1
 	github.com/gabriel-vasile/mimetype v1.4.0
 	github.com/go-bindata/go-bindata/v3 v3.1.3
+	github.com/guseggert/go-ds-grpc v0.0.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/ipfs/go-bitswap v0.5.1
 	github.com/ipfs/go-block-format v0.0.3
@@ -109,6 +110,9 @@ require (
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20211025112917-711f33c9992c
+	google.golang.org/grpc v1.44.0
 )
 
 go 1.16
+
+replace github.com/guseggert/go-ds-grpc v0.0.1 => ../go-ds-grpc
