@@ -159,6 +159,25 @@ func (n *IpfsNode) Bootstrap(cfg bootstrap.BootstrapConfig) error {
 			return ps
 		}
 	}
+	if cfg.SaveTempPeersForBootstrap == nil {
+		cfg.SaveTempPeersForBootstrap = func(peerList []peer.AddrInfo) {
+			err := n.saveTempBootstrapPeers(peerList)
+			if err != nil {
+				log.Warnf("saveTempBootstrapPeers failed: %s", err)
+				return
+			}
+		}
+	}
+	if cfg.LoadTempPeersForBootstrap == nil {
+		cfg.LoadTempPeersForBootstrap = func() []peer.AddrInfo {
+			peerList, err := n.loadTempBootstrapPeers()
+			if err != nil {
+				log.Warnf("loadTempBootstrapPeers failed: %s", err)
+				return nil
+			}
+			return peerList
+		}
+	}
 
 	var err error
 	n.Bootstrapper, err = bootstrap.Bootstrap(n.Identity, n.PeerHost, n.Routing, cfg)
@@ -172,6 +191,35 @@ func (n *IpfsNode) loadBootstrapPeers() ([]peer.AddrInfo, error) {
 	}
 
 	return cfg.BootstrapPeers()
+}
+
+func (n *IpfsNode) saveTempBootstrapPeers(peerList []peer.AddrInfo) error {
+	cfg, err := n.Repo.Config()
+	if err != nil {
+		return err
+	}
+
+	cfg.SetTempBootstrapPeers(peerList)
+
+	// FIXME(BLOCKING): Confirm if we should be persisting this to the config
+	//  file on every call. Since this is going to be run much more sporadically
+	//  than the bootstrap process itself (every 24 hours in the original proposal)
+	//  it wouldn't be expensive (and we probably don't want to lose the list
+	//  in case of a crash/panic).
+	if err := n.Repo.SetConfig(cfg); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (n *IpfsNode) loadTempBootstrapPeers() ([]peer.AddrInfo, error) {
+	cfg, err := n.Repo.Config()
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg.LoadTempBootstrapPeers()
 }
 
 type ConstructPeerHostOpts struct {

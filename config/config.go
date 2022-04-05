@@ -22,6 +22,10 @@ type Config struct {
 	Routing   Routing   // local node's routing settings
 	Ipns      Ipns      // Ipns settings
 	Bootstrap []string  // local nodes's bootstrap peer addresses
+	// FIXME(BLOCKING): Review name and documentation.
+	// List of connected peers saved to be used as temporary bootstrap nodes
+	// in case we fail to connect to the official Bootstrap list.
+	TempBootstrapPeers []string
 	Gateway   Gateway   // local node's gateway server options
 	API       API       // local node's API settings
 	Swarm     SwarmConfig
