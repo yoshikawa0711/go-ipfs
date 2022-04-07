@@ -262,14 +262,7 @@ func bootstrapRound(ctx context.Context, host host.Host, cfg BootstrapConfig) er
 // but this list comes from restricted sets of original or temporary bootstrap
 // nodes which will keep it under a sane value.)
 func peersConnect(ctx context.Context, ph host.Host, availablePeers []peer.AddrInfo, needed int, permanent bool) uint64 {
-	// filter out nodes we are already connected to
-	var notConnected []peer.AddrInfo
-	for _, p := range availablePeers {
-		if ph.Network().Connectedness(p.ID) != network.Connected {
-			notConnected = append(notConnected, p)
-		}
-	}
-	peers := randomizeAddressList(notConnected)
+	peers := randomizeAddressList(availablePeers)
 
 	// Monitor the number of connections and stop if we reach the target.
 	var connected uint64
@@ -305,6 +298,12 @@ func peersConnect(ctx context.Context, ph host.Host, availablePeers []peer.AddrI
 		wg.Add(1)
 		go func(p peer.AddrInfo) {
 			defer wg.Done()
+
+			// Skip addresses belonging to a peer we're already connected to.
+			// (Not a guarantee but a best-effort policy.)
+			if ph.Network().Connectedness(p.ID) == network.Connected {
+				return
+			}
 			log.Debugf("%s bootstrapping to %s", ph.ID(), p.ID)
 
 			if err := ph.Connect(ctx, p); err != nil {
