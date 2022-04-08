@@ -59,7 +59,7 @@ require (
 	github.com/ipfs/go-verifcid v0.0.1
 	github.com/ipfs/interface-go-ipfs-core v0.6.2
 	github.com/ipfs/tar-utils v0.0.2
-	github.com/ipld/go-car v0.3.2
+	github.com/ipld/go-car v0.3.3
 	github.com/ipld/go-car/v2 v2.1.1
 	github.com/ipld/go-codec-dagpb v1.4.0
 	github.com/ipld/go-ipld-prime v0.16.0
