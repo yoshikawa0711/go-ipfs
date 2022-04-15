@@ -28,7 +28,7 @@ require (
 	github.com/ipfs/go-fetcher v1.6.1
 	github.com/ipfs/go-filestore v1.2.0
 	github.com/ipfs/go-fs-lock v0.0.7
-	github.com/ipfs/go-graphsync v0.11.0
+	github.com/ipfs/go-graphsync v0.13.1
 	github.com/ipfs/go-ipfs-blockstore v1.2.0
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-cmds v0.8.0
@@ -55,7 +55,7 @@ require (
 	github.com/ipfs/go-path v0.2.2
 	github.com/ipfs/go-pinning-service-http-client v0.1.0
 	github.com/ipfs/go-unixfs v0.3.1
-	github.com/ipfs/go-unixfsnode v1.1.3
+	github.com/ipfs/go-unixfsnode v1.4.0
 	github.com/ipfs/go-verifcid v0.0.1
 	github.com/ipfs/interface-go-ipfs-core v0.6.2
 	github.com/ipfs/tar-utils v0.0.2
@@ -170,7 +170,7 @@ require (
 	github.com/ipfs/go-ipfs-ds-help v1.1.0 // indirect
 	github.com/ipfs/go-ipfs-pq v0.0.2 // indirect
 	github.com/ipfs/go-log/v2 v2.5.0 // indirect
-	github.com/ipfs/go-peertaskqueue v0.7.0 // indirect
+	github.com/ipfs/go-peertaskqueue v0.7.1 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
