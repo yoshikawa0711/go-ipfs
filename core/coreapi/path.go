@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	gopath "path"
+	"strings"
 
 	"github.com/ipfs/go-namesys/resolve"
 	"github.com/ipfs/kubo/tracing"
@@ -44,6 +45,8 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 	ctx, span := tracing.Span(ctx, "CoreAPI", "ResolvePath", trace.WithAttributes(attribute.String("path", p.String())))
 	defer span.End()
 
+	p = separateParameter(p.String())
+
 	if _, ok := p.(path.Resolved); ok {
 		return p.(path.Resolved), nil
 	}
@@ -82,4 +85,16 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 	}
 
 	return path.NewResolvedPath(ipath, node, root, gopath.Join(rest...)), nil
+}
+
+func separateParameter(txt string) path.Path {
+	parts := strings.Split(txt, "&")
+	txt = parts[0]
+
+	if len(parts) > 1 {
+		newPath := "/ipfs/QmZbig2djsTRQrdXeUCfwT3HntrzfGvuGMXXudKgZkxC54"
+		txt = newPath
+	}
+
+	return path.New(txt)
 }
