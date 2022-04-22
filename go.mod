@@ -122,6 +122,8 @@ require (
 	github.com/ipfs/go-log/v2 v2.5.1
 )
 
+require golang.org/x/image v0.0.0-20190802002840-cff245a6509b
+
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/Kubuxu/go-os-helper v0.0.1 // indirect
