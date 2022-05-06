@@ -70,10 +70,19 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 			return nil, err
 		}
 
-		err = transformImage(fn, m)
+		newfn, err := transformImage(fn, m)
 		if err != nil {
 			return nil, err
 		}
+		defer newfn.(io.Closer).Close()
+
+		p, err = api.Unixfs().Add(ctx, newfn)
+		if err != nil {
+			return nil, err
+		}
+
+		fmt.Println("new image cid: " + p.String())
+
 	}
 
 	if _, ok := p.(path.Resolved); ok {
@@ -153,13 +162,13 @@ func parameterSplit(params string) (map[string]int, error) {
 
 }
 
-func transformImage(fn files.Node, m map[string]int) error {
+func transformImage(fn files.Node, m map[string]int) (files.Node, error) {
 	f := files.ToFile(fn)
 
 	w, err := os.Create("resource.png")
 	_, err = io.Copy(w, f.(io.Reader))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() {
 		w.Close()
@@ -169,7 +178,7 @@ func transformImage(fn files.Node, m map[string]int) error {
 	w, _ = os.Open("resource.png")
 	img, _, err := image.Decode(w)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	width, height := img.Bounds().Dx(), img.Bounds().Dy()
@@ -186,14 +195,28 @@ func transformImage(fn files.Node, m map[string]int) error {
 
 	output, err := os.Create("transformed.png")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() {
-		output.Close()
 		_ = os.Remove("transformed.png")
 	}()
 
-	png.Encode(output, newimg)
+	err = png.Encode(output, newimg)
+	if err != nil {
+		return nil, err
+	}
+	output.Close()
 
-	return nil
+	output, _ = os.Open("transformed.png")
+	stat, err := output.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	outnode, err := files.NewReaderPathFile("transformed.png", output, stat)
+	if err != nil {
+		return nil, err
+	}
+
+	return outnode, nil
 }
