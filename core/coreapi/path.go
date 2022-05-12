@@ -53,32 +53,51 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 	ctx, span := tracing.Span(ctx, "CoreAPI", "ResolvePath", trace.WithAttributes(attribute.String("path", p.String())))
 	defer span.End()
 
+	var newp path.Path
+
 	if hasParameter(p.String()) {
-		var params string
-		p, params = separateParameter(p.String())
-		fn, err := api.Unixfs().Get(ctx, p)
-		if err != nil {
-			return nil, err
-		}
-		defer fn.(io.Closer).Close()
+		if ok, pstr := isExitLink(p.String()); ok {
+			newp = path.New(pstr)
+		} else {
+			var params string
+			p, params = separateParameter(p.String())
+			fn, err := api.Unixfs().Get(ctx, p)
+			if err != nil {
+				return nil, err
+			}
+			defer fn.(io.Closer).Close()
 
-		m, err := parameterSplit(params)
-		if err != nil {
-			return nil, err
+			m, err := parameterSplit(params)
+			if err != nil {
+				return nil, err
+			}
+
+			newfn, err := transformImage(fn, m)
+			if err != nil {
+				return nil, err
+			}
+			defer newfn.(io.Closer).Close()
+
+			newp, err = api.Unixfs().Add(ctx, newfn)
+			if err != nil {
+				return nil, err
+			}
+
+			fmt.Println("new image cid: " + p.String())
+
+			linknode, err := os.OpenFile("linkstore", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0664)
+			if err != nil {
+				return nil, err
+			}
+			defer linknode.Close()
+
+			_, err = linknode.WriteString(p.String() + "&" + params + ":" + newp.String() + "\n")
+			if err != nil {
+				return nil, err
+			}
 		}
 
-		newfn, err := transformImage(fn, m)
-		if err != nil {
-			return nil, err
-		}
-		defer newfn.(io.Closer).Close()
-
-		p, err = api.Unixfs().Add(ctx, newfn)
-		if err != nil {
-			return nil, err
-		}
-
-		fmt.Println("new image cid: " + p.String())
+		p = newp
 
 	}
 
@@ -120,6 +139,30 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 	}
 
 	return path.NewResolvedPath(ipath, node, root, gopath.Join(rest...)), nil
+}
+
+func isExitLink(pstr string) (bool, string) {
+	_, err := os.Open("linkstore")
+	if os.IsNotExist(err) {
+		return false, ""
+	}
+
+	listfile, err := os.ReadFile("linkstore")
+	if err != nil {
+		return false, ""
+	}
+
+	list := string(listfile)
+	lines := strings.Split(list, "\n")
+
+	for _, v := range lines {
+		p := strings.Split(v, ":")
+		if pstr == p[0] {
+			return true, p[1]
+		}
+	}
+
+	return false, ""
 }
 
 func hasParameter(pstr string) bool {
