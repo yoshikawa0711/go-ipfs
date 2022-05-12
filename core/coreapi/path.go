@@ -53,12 +53,9 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 	ctx, span := tracing.Span(ctx, "CoreAPI", "ResolvePath", trace.WithAttributes(attribute.String("path", p.String())))
 	defer span.End()
 
-	p, params, err := separateParameter(p.String())
-	if err != nil {
-		return nil, err
-	}
-
-	if params != "" {
+	if hasParameter(p.String()) {
+		var params string
+		p, params = separateParameter(p.String())
 		fn, err := api.Unixfs().Get(ctx, p)
 		if err != nil {
 			return nil, err
@@ -93,7 +90,7 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 	}
 
 	ipath := ipfspath.Path(p.String())
-	ipath, err = resolve.ResolveIPNS(ctx, api.namesys, ipath)
+	ipath, err := resolve.ResolveIPNS(ctx, api.namesys, ipath)
 	if err == resolve.ErrNoNamesys {
 		return nil, coreiface.ErrOffline
 	} else if err != nil {
@@ -125,18 +122,23 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 	return path.NewResolvedPath(ipath, node, root, gopath.Join(rest...)), nil
 }
 
-func separateParameter(txt string) (path.Path, string, error) {
+func hasParameter(pstr string) bool {
+	parts := strings.Split(pstr, "&")
+
+	if len(parts) != 2 {
+		return false
+	}
+
+	return true
+}
+
+// Before executing saparateParameter,
+// you need to execute hasParameter and
+// check return is true
+func separateParameter(txt string) (path.Path, string) {
 	parts := strings.Split(txt, "&")
 
-	if len(parts) > 2 {
-		return path.New(parts[0]), "", nil
-	}
-
-	if len(parts) == 1 {
-		return path.New(parts[0]), "", nil
-	}
-
-	return path.New(parts[0]), parts[1], nil
+	return path.New(parts[0]), parts[1]
 }
 
 func parameterSplit(params string) (map[string]int, error) {
@@ -147,14 +149,18 @@ func parameterSplit(params string) (map[string]int, error) {
 	for _, v := range parts {
 		param := strings.Split(v, "=")
 
-		if len(param) > 2 || len(param[0]) != 1 {
-			return nil, fmt.Errorf("image transform parameter error")
+		if len(param) != 2 {
+			return nil, fmt.Errorf("parameter split error")
 		}
 
-		var err error
-		m[param[0]], err = strconv.Atoi(param[1])
-		if err != nil {
-			return nil, err
+		if param[0] == "w" || param[0] == "h" {
+			var err error
+			m[param[0]], err = strconv.Atoi(param[1])
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, fmt.Errorf("invalid parameter error")
 		}
 	}
 
