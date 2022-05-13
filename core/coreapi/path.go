@@ -54,13 +54,17 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 	defer span.End()
 
 	var newp path.Path
+	ok, pstr, err := hasParameter(p.String())
+	if err != nil {
+		return nil, err
+	}
 
-	if hasParameter(p.String()) {
-		if ok, pstr := isExitLink(p.String()); ok {
+	if ok {
+		if ok, pstr = isExitLink(pstr); ok {
 			newp = path.New(pstr)
 		} else {
 			var params string
-			p, params = separateParameter(p.String())
+			p, params = separateParameter(pstr)
 			fn, err := api.Unixfs().Get(ctx, p)
 			if err != nil {
 				return nil, err
@@ -83,7 +87,7 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 				return nil, err
 			}
 
-			fmt.Println("new image cid: " + p.String())
+			fmt.Println("new image cid: " + newp.String())
 
 			linknode, err := os.OpenFile("linkstore", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0664)
 			if err != nil {
@@ -109,7 +113,7 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 	}
 
 	ipath := ipfspath.Path(p.String())
-	ipath, err := resolve.ResolveIPNS(ctx, api.namesys, ipath)
+	ipath, err = resolve.ResolveIPNS(ctx, api.namesys, ipath)
 	if err == resolve.ErrNoNamesys {
 		return nil, coreiface.ErrOffline
 	} else if err != nil {
@@ -142,37 +146,68 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 }
 
 func isExitLink(pstr string) (bool, string) {
-	_, err := os.Open("linkstore")
+	linkstore, err := os.Open("linkstore")
 	if os.IsNotExist(err) {
-		return false, ""
+		return false, pstr
 	}
+	defer linkstore.Close()
 
 	listfile, err := os.ReadFile("linkstore")
 	if err != nil {
-		return false, ""
+		return false, pstr
 	}
 
 	list := string(listfile)
 	lines := strings.Split(list, "\n")
 
 	for _, v := range lines {
-		p := strings.Split(v, ":")
-		if pstr == p[0] {
-			return true, p[1]
+		pathlist := strings.Split(v, ":")
+
+		parts := strings.Split(pstr, "&")
+		searchpath, err := ipfspath.ParsePath(parts[0])
+		if err != nil {
+			return false, pstr
+		}
+
+		if searchpath.String()+"&"+parts[1] == pathlist[0] {
+			return true, pathlist[1]
 		}
 	}
 
-	return false, ""
+	return false, pstr
 }
 
-func hasParameter(pstr string) bool {
+func hasParameter(pstr string) (bool, string, error) {
 	parts := strings.Split(pstr, "&")
 
-	if len(parts) != 2 {
-		return false
+	if len(parts) == 1 {
+		return false, pstr, nil
 	}
 
-	return true
+	if len(parts) > 2 {
+		return false, pstr, fmt.Errorf("invalid parameter: %s", pstr)
+	}
+
+	m, err := parameterSplit(parts[1])
+	if err != nil {
+		return false, pstr, err
+	}
+
+	var newparams string
+	if v, ok := m["w"]; ok {
+		newparams += "w=" + fmt.Sprint(v)
+	}
+
+	if v, ok := m["h"]; ok {
+		if newparams != "" {
+			newparams += ","
+		}
+		newparams += "h=" + fmt.Sprint(v)
+	}
+
+	fmt.Println(parts[0] + "&" + newparams)
+
+	return true, parts[0] + "&" + newparams, nil
 }
 
 // Before executing saparateParameter,
@@ -193,17 +228,25 @@ func parameterSplit(params string) (map[string]int, error) {
 		param := strings.Split(v, "=")
 
 		if len(param) != 2 {
-			return nil, fmt.Errorf("parameter split error")
+			return nil, fmt.Errorf("invalid parameter: %s", v)
 		}
 
 		if param[0] == "w" || param[0] == "h" {
-			var err error
-			m[param[0]], err = strconv.Atoi(param[1])
-			if err != nil {
-				return nil, err
+
+			if _, ok := m[param[0]]; !ok {
+				var err error
+
+				m[param[0]], err = strconv.Atoi(param[1])
+				if err != nil {
+					return nil, err
+				}
+
+			} else {
+				return nil, fmt.Errorf("invalid parameter: %s: already exist", param[0])
 			}
+
 		} else {
-			return nil, fmt.Errorf("invalid parameter error")
+			return nil, fmt.Errorf("invalid parameter: %s is not supported", param[0])
 		}
 	}
 
