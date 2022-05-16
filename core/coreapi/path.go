@@ -54,53 +54,31 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 	defer span.End()
 
 	var newp path.Path
-	ok, pstr, err := hasParameter(p.String())
+	ok, parsedpstr, err := hasParameter(p.String())
 	if err != nil {
 		return nil, err
 	}
 
 	if ok {
-		if ok, pstr = isExitLink(pstr); ok {
-			newp = path.New(pstr)
+		if ok, existpath := isExistLink(parsedpstr); ok {
+			newp = path.New(existpath)
+
+			_, err = api.Unixfs().Get(ctx, newp)
+			if err != nil {
+				newp, err = api.createNewImage(ctx, parsedpstr)
+				if err != nil {
+					return nil, err
+				}
+			}
 		} else {
-			var params string
-			p, params = separateParameter(pstr)
-			fn, err := api.Unixfs().Get(ctx, p)
-			if err != nil {
-				return nil, err
-			}
-			defer fn.(io.Closer).Close()
-
-			m, err := parameterSplit(params)
+			newp, err = api.createNewImage(ctx, parsedpstr)
 			if err != nil {
 				return nil, err
 			}
 
-			newfn, err := transformImage(fn, m)
-			if err != nil {
-				return nil, err
-			}
-			defer newfn.(io.Closer).Close()
-
-			newp, err = api.Unixfs().Add(ctx, newfn)
-			if err != nil {
-				return nil, err
-			}
-
-			fmt.Println("new image cid: " + newp.String())
-
-			linknode, err := os.OpenFile("linkstore", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0664)
-			if err != nil {
-				return nil, err
-			}
-			defer linknode.Close()
-
-			_, err = linknode.WriteString(p.String() + "&" + params + ":" + newp.String() + "\n")
-			if err != nil {
-				return nil, err
-			}
 		}
 
+		saveLink(parsedpstr, newp.String())
 		p = newp
 
 	}
@@ -145,7 +123,7 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 	return path.NewResolvedPath(ipath, node, root, gopath.Join(rest...)), nil
 }
 
-func isExitLink(pstr string) (bool, string) {
+func isExistLink(pstr string) (bool, string) {
 	linkstore, err := os.Open("linkstore")
 	if os.IsNotExist(err) {
 		return false, pstr
@@ -188,7 +166,7 @@ func hasParameter(pstr string) (bool, string, error) {
 		return false, pstr, fmt.Errorf("invalid parameter: %s", pstr)
 	}
 
-	m, err := parameterSplit(parts[1])
+	m, err := splitParameter(parts[1])
 	if err != nil {
 		return false, pstr, err
 	}
@@ -219,7 +197,7 @@ func separateParameter(txt string) (path.Path, string) {
 	return path.New(parts[0]), parts[1]
 }
 
-func parameterSplit(params string) (map[string]int, error) {
+func splitParameter(params string) (map[string]int, error) {
 	m := make(map[string]int)
 
 	parts := strings.Split(params, ",")
@@ -311,4 +289,49 @@ func transformImage(fn files.Node, m map[string]int) (files.Node, error) {
 	}
 
 	return outnode, nil
+}
+
+func (api *CoreAPI) createNewImage(ctx context.Context, parsedpstr string) (path.Path, error) {
+	var params string
+	targetpath, params := separateParameter(parsedpstr)
+	fn, err := api.Unixfs().Get(ctx, targetpath)
+	if err != nil {
+		return nil, err
+	}
+	defer fn.(io.Closer).Close()
+
+	m, err := splitParameter(params)
+	if err != nil {
+		return nil, err
+	}
+
+	newfn, err := transformImage(fn, m)
+	if err != nil {
+		return nil, err
+	}
+	defer newfn.(io.Closer).Close()
+
+	newp, err := api.Unixfs().Add(ctx, newfn)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("new image cid: " + newp.String())
+
+	return newp, nil
+}
+
+func saveLink(oldpath, newpath string) error {
+	linknode, err := os.OpenFile("linkstore", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0664)
+	if err != nil {
+		return err
+	}
+	defer linknode.Close()
+
+	_, err = linknode.WriteString(oldpath + ":" + newpath + "\n")
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
