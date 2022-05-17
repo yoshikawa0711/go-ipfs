@@ -69,6 +69,9 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 				if err != nil {
 					return nil, err
 				}
+
+				changeLink(parsedpstr, newp.String())
+
 			}
 		} else {
 			newp, err = api.createNewImage(ctx, parsedpstr)
@@ -76,9 +79,10 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 				return nil, err
 			}
 
+			saveLink(parsedpstr, newp.String())
+
 		}
 
-		saveLink(parsedpstr, newp.String())
 		p = newp
 
 	}
@@ -334,4 +338,40 @@ func saveLink(oldpath, newpath string) error {
 	}
 
 	return nil
+}
+
+func changeLink(oldpath, newpath string) error {
+	linknode, err := os.OpenFile("linkstore", os.O_RDWR, 0664)
+	if err != nil {
+		return err
+	}
+	defer linknode.Close()
+
+	listfile, err := os.ReadFile("linkstore")
+	if err != nil {
+		return err
+	}
+
+	list := string(listfile)
+	lines := strings.Split(list, "\n")
+
+	var count int64 = 0
+
+	for _, v := range lines {
+		pathlist := strings.Split(v, ":")
+
+		if pathlist[0] == oldpath {
+			pathlist[1] = newpath
+
+			_, err = linknode.WriteAt([]byte(pathlist[0]+":"+pathlist[1]+"\n"), count)
+			if err != nil {
+				return err
+			}
+		}
+
+		count += int64(len([]byte(v + "\n")))
+	}
+
+	return nil
+
 }
