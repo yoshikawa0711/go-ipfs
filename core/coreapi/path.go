@@ -71,7 +71,6 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 				}
 
 				changeLink(parsedpstr, newp.String())
-
 			}
 		} else {
 			newp, err = api.createNewImage(ctx, parsedpstr)
@@ -80,11 +79,9 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 			}
 
 			saveLink(parsedpstr, newp.String())
-
 		}
 
 		p = newp
-
 	}
 
 	if _, ok := p.(path.Resolved); ok {
@@ -145,13 +142,11 @@ func isExistLink(pstr string) (bool, string) {
 	for _, v := range lines {
 		pathlist := strings.Split(v, ":")
 
-		parts := strings.Split(pstr, "&")
-		searchpath, err := ipfspath.ParsePath(parts[0])
 		if err != nil {
 			return false, pstr
 		}
 
-		if searchpath.String()+"&"+parts[1] == pathlist[0] {
+		if pstr == pathlist[0] {
 			return true, pathlist[1]
 		}
 	}
@@ -168,6 +163,11 @@ func hasParameter(pstr string) (bool, string, error) {
 
 	if len(parts) > 2 {
 		return false, pstr, fmt.Errorf("invalid parameter: %s", pstr)
+	}
+
+	path, err := ipfspath.ParsePath(parts[0])
+	if err != nil {
+		return false, pstr, nil
 	}
 
 	m, err := splitParameter(parts[1])
@@ -187,9 +187,7 @@ func hasParameter(pstr string) (bool, string, error) {
 		newparams += "h=" + fmt.Sprint(v)
 	}
 
-	fmt.Println(parts[0] + "&" + newparams)
-
-	return true, parts[0] + "&" + newparams, nil
+	return true, path.String() + "&" + newparams, nil
 }
 
 // Before executing saparateParameter,
