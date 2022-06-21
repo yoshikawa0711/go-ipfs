@@ -35,12 +35,24 @@ func (api *CoreAPI) ResolveNode(ctx context.Context, p path.Path) (ipld.Node, er
 	ctx, span := tracing.Span(ctx, "CoreAPI", "ResolveNode", trace.WithAttributes(attribute.String("path", p.String())))
 	defer span.End()
 
-	rp, err := api.ResolvePath(ctx, p)
+	var param string
+	ok, parsedpstr, err := hasParameter(p.String())
 	if err != nil {
 		return nil, err
 	}
 
-	node, err := api.dag.Get(ctx, rp.Cid())
+	if ok {
+		p, param = separateParameter(parsedpstr)
+	}
+
+	rp, err := api.ResolvePath(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+	c := rp.Cid()
+	c.SetParam(param)
+
+	node, err := api.dag.Get(ctx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -53,36 +65,39 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 	ctx, span := tracing.Span(ctx, "CoreAPI", "ResolvePath", trace.WithAttributes(attribute.String("path", p.String())))
 	defer span.End()
 
-	var newp path.Path
-	ok, parsedpstr, err := hasParameter(p.String())
-	if err != nil {
-		return nil, err
-	}
+	/*
+		var newp path.Path
+		ok, parsedpstr, err := hasParameter(p.String())
+		if err != nil {
+			return nil, err
+		}
 
-	if ok {
-		if ok, existpath := isExistLink(parsedpstr); ok {
-			newp = path.New(existpath)
+		if ok {
+			if ok, existpath := isExistLink(parsedpstr); ok {
+				newp = path.New(existpath)
 
-			_, err = api.Unixfs().Get(ctx, newp)
-			if err != nil {
+				_, err = api.Unixfs().Get(ctx, newp)
+				if err != nil {
+					newp, err = api.createNewImage(ctx, parsedpstr)
+					if err != nil {
+						return nil, err
+					}
+
+					changeLink(parsedpstr, newp.String())
+				}
+			} else {
 				newp, err = api.createNewImage(ctx, parsedpstr)
 				if err != nil {
 					return nil, err
 				}
 
-				changeLink(parsedpstr, newp.String())
-			}
-		} else {
-			newp, err = api.createNewImage(ctx, parsedpstr)
-			if err != nil {
-				return nil, err
+				saveLink(parsedpstr, newp.String())
 			}
 
-			saveLink(parsedpstr, newp.String())
+			p = newp
 		}
 
-		p = newp
-	}
+	*/
 
 	if _, ok := p.(path.Resolved); ok {
 		return p.(path.Resolved), nil
@@ -92,7 +107,7 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 	}
 
 	ipath := ipfspath.Path(p.String())
-	ipath, err = resolve.ResolveIPNS(ctx, api.namesys, ipath)
+	ipath, err := resolve.ResolveIPNS(ctx, api.namesys, ipath)
 	if err == resolve.ErrNoNamesys {
 		return nil, coreiface.ErrOffline
 	} else if err != nil {
