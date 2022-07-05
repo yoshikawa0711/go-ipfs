@@ -50,7 +50,9 @@ func (api *CoreAPI) ResolveNode(ctx context.Context, p path.Path) (ipld.Node, er
 		return nil, err
 	}
 	c := rp.Cid()
-	c.SetParam(param)
+	if param != "" {
+		c.SetParam(param)
+	}
 
 	node, err := api.dag.Get(ctx, c)
 	if err != nil {
@@ -78,7 +80,7 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 
 				_, err = api.Unixfs().Get(ctx, newp)
 				if err != nil {
-					newp, err = api.createNewImage(ctx, parsedpstr)
+					newp, err = createNewImage(ctx, api, parsedpstr)
 					if err != nil {
 						return nil, err
 					}
@@ -86,7 +88,7 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 					changeLink(parsedpstr, newp.String())
 				}
 			} else {
-				newp, err = api.createNewImage(ctx, parsedpstr)
+				newp, err = createNewImage(ctx, api, parsedpstr)
 				if err != nil {
 					return nil, err
 				}
@@ -96,7 +98,6 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 
 			p = newp
 		}
-
 	*/
 
 	if _, ok := p.(path.Resolved); ok {
@@ -142,13 +143,13 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 func isExistLink(pstr string) (bool, string) {
 	linkstore, err := os.Open("linkstore")
 	if os.IsNotExist(err) {
-		return false, pstr
+		return false, ""
 	}
 	defer linkstore.Close()
 
 	listfile, err := os.ReadFile("linkstore")
 	if err != nil {
-		return false, pstr
+		return false, ""
 	}
 
 	list := string(listfile)
@@ -158,7 +159,7 @@ func isExistLink(pstr string) (bool, string) {
 		pathlist := strings.Split(v, ":")
 
 		if err != nil {
-			return false, pstr
+			return false, ""
 		}
 
 		if pstr == pathlist[0] {
@@ -166,7 +167,7 @@ func isExistLink(pstr string) (bool, string) {
 		}
 	}
 
-	return false, pstr
+	return false, ""
 }
 
 func hasParameter(pstr string) (bool, string, error) {
@@ -308,7 +309,7 @@ func transformImage(fn files.Node, m map[string]int) (files.Node, error) {
 	return outnode, nil
 }
 
-func (api *CoreAPI) createNewImage(ctx context.Context, parsedpstr string) (path.Path, error) {
+func createNewImage(ctx context.Context, api *CoreAPI, parsedpstr string) (path.Path, error) {
 	var params string
 	targetpath, params := separateParameter(parsedpstr)
 	fn, err := api.Unixfs().Get(ctx, targetpath)
