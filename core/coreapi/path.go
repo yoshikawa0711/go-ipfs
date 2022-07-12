@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	gopath "path"
-	"strconv"
 	"strings"
 
 	"github.com/ipfs/go-namesys/resolve"
@@ -35,15 +34,15 @@ func (api *CoreAPI) ResolveNode(ctx context.Context, p path.Path) (ipld.Node, er
 	ctx, span := tracing.Span(ctx, "CoreAPI", "ResolveNode", trace.WithAttributes(attribute.String("path", p.String())))
 	defer span.End()
 
-	var param string
-	ok, parsedpstr, err := hasParameter(p.String())
-	if err != nil {
-		return nil, err
+	pstr, param := cid.SeparateParameter(p.String())
+	if param != "" {
+		newparam, err := cid.OrganizeParameter(param)
+		if err != nil {
+			return nil, err
+		}
+		param = newparam
 	}
-
-	if ok {
-		p, param = separateParameter(parsedpstr)
-	}
+	p = path.New(pstr)
 
 	rp, err := api.ResolvePath(ctx, p)
 	if err != nil {
@@ -186,7 +185,7 @@ func hasParameter(pstr string) (bool, string, error) {
 		return false, pstr, nil
 	}
 
-	m, err := splitParameter(parts[1])
+	m, err := cid.SplitParameter(parts[1])
 	if err != nil {
 		return false, pstr, err
 	}
@@ -204,50 +203,6 @@ func hasParameter(pstr string) (bool, string, error) {
 	}
 
 	return true, path.String() + "&" + newparams, nil
-}
-
-// Before executing saparateParameter,
-// you need to execute hasParameter and
-// check return is true
-func separateParameter(txt string) (path.Path, string) {
-	parts := strings.Split(txt, "&")
-
-	return path.New(parts[0]), parts[1]
-}
-
-func splitParameter(params string) (map[string]int, error) {
-	m := make(map[string]int)
-
-	parts := strings.Split(params, ",")
-
-	for _, v := range parts {
-		param := strings.Split(v, "=")
-
-		if len(param) != 2 {
-			return nil, fmt.Errorf("invalid parameter: %s", v)
-		}
-
-		if param[0] == "w" || param[0] == "h" {
-
-			if _, ok := m[param[0]]; !ok {
-				var err error
-
-				m[param[0]], err = strconv.Atoi(param[1])
-				if err != nil {
-					return nil, err
-				}
-
-			} else {
-				return nil, fmt.Errorf("invalid parameter: %s: already exist", param[0])
-			}
-
-		} else {
-			return nil, fmt.Errorf("invalid parameter: %s is not supported", param[0])
-		}
-	}
-
-	return m, nil
-
 }
 
 func transformImage(fn files.Node, m map[string]int) (files.Node, error) {
@@ -310,15 +265,15 @@ func transformImage(fn files.Node, m map[string]int) (files.Node, error) {
 }
 
 func createNewImage(ctx context.Context, api *CoreAPI, parsedpstr string) (path.Path, error) {
-	var params string
-	targetpath, params := separateParameter(parsedpstr)
+	pstr, params := cid.SeparateParameter(parsedpstr)
+	targetpath := path.New(pstr)
 	fn, err := api.Unixfs().Get(ctx, targetpath)
 	if err != nil {
 		return nil, err
 	}
 	defer fn.(io.Closer).Close()
 
-	m, err := splitParameter(params)
+	m, err := cid.SplitParameter(params)
 	if err != nil {
 		return nil, err
 	}
