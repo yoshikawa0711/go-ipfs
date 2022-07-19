@@ -22,6 +22,7 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 	ipfspath "github.com/ipfs/go-path"
 	ipfspathresolver "github.com/ipfs/go-path/resolver"
+	unixfile "github.com/ipfs/go-unixfs/file"
 	coreiface "github.com/ipfs/interface-go-ipfs-core"
 	path "github.com/ipfs/interface-go-ipfs-core/path"
 
@@ -51,11 +52,57 @@ func (api *CoreAPI) ResolveNode(ctx context.Context, p path.Path) (ipld.Node, er
 	c := rp.Cid()
 	if param != "" {
 		c.SetParam(param)
+		if ok, newcid := c.IsExistResizeCid(); ok {
+			newcid.SetRequest(c.StringWithParam())
+			c = newcid
+		}
 	}
 
 	node, err := api.dag.Get(ctx, c)
 	if err != nil {
-		return nil, err
+		if ipld.IsNotFound(err) && c.GetRequest() != "" {
+			origincid, err := c.GetRequestCid()
+			if err != nil {
+				return nil, err
+			}
+
+			originparam := origincid.GetParam()
+			origincid.SetParam("")
+
+			originnode, err := api.ResolveNode(ctx, path.IpfsPath(origincid))
+			if err != nil {
+				return nil, err
+			}
+
+			m, err := cid.SplitParameter(originparam)
+			if err != nil {
+				return nil, err
+			}
+
+			ses := api.getSession(ctx)
+			f, err := unixfile.NewUnixfsFile(ctx, ses.dag, originnode)
+			if err != nil {
+				return nil, err
+			}
+
+			fn, err := transformImage(f, m)
+			if err != nil {
+				return nil, err
+			}
+
+			rp, err = api.Unixfs().Add(ctx, fn)
+			if err != nil {
+				return nil, err
+			}
+
+			node, err = api.dag.Get(ctx, rp.Cid())
+			if err != nil {
+				return nil, err
+			}
+
+		} else {
+			return nil, err
+		}
 	}
 	return node, nil
 }
@@ -65,39 +112,6 @@ func (api *CoreAPI) ResolveNode(ctx context.Context, p path.Path) (ipld.Node, er
 func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved, error) {
 	ctx, span := tracing.Span(ctx, "CoreAPI", "ResolvePath", trace.WithAttributes(attribute.String("path", p.String())))
 	defer span.End()
-
-	/*
-		var newp path.Path
-		ok, parsedpstr, err := hasParameter(p.String())
-		if err != nil {
-			return nil, err
-		}
-
-		if ok {
-			if ok, existpath := isExistLink(parsedpstr); ok {
-				newp = path.New(existpath)
-
-				_, err = api.Unixfs().Get(ctx, newp)
-				if err != nil {
-					newp, err = createNewImage(ctx, api, parsedpstr)
-					if err != nil {
-						return nil, err
-					}
-
-					changeLink(parsedpstr, newp.String())
-				}
-			} else {
-				newp, err = createNewImage(ctx, api, parsedpstr)
-				if err != nil {
-					return nil, err
-				}
-
-				saveLink(parsedpstr, newp.String())
-			}
-
-			p = newp
-		}
-	*/
 
 	if _, ok := p.(path.Resolved); ok {
 		return p.(path.Resolved), nil
@@ -137,72 +151,6 @@ func (api *CoreAPI) ResolvePath(ctx context.Context, p path.Path) (path.Resolved
 	}
 
 	return path.NewResolvedPath(ipath, node, root, gopath.Join(rest...)), nil
-}
-
-func isExistLink(pstr string) (bool, string) {
-	linkstore, err := os.Open("linkstore")
-	if os.IsNotExist(err) {
-		return false, ""
-	}
-	defer linkstore.Close()
-
-	listfile, err := os.ReadFile("linkstore")
-	if err != nil {
-		return false, ""
-	}
-
-	list := string(listfile)
-	lines := strings.Split(list, "\n")
-
-	for _, v := range lines {
-		pathlist := strings.Split(v, ":")
-
-		if err != nil {
-			return false, ""
-		}
-
-		if pstr == pathlist[0] {
-			return true, pathlist[1]
-		}
-	}
-
-	return false, ""
-}
-
-func hasParameter(pstr string) (bool, string, error) {
-	parts := strings.Split(pstr, "&")
-
-	if len(parts) == 1 {
-		return false, pstr, nil
-	}
-
-	if len(parts) > 2 {
-		return false, pstr, fmt.Errorf("invalid parameter: %s", pstr)
-	}
-
-	path, err := ipfspath.ParsePath(parts[0])
-	if err != nil {
-		return false, pstr, nil
-	}
-
-	m, err := cid.SplitParameter(parts[1])
-	if err != nil {
-		return false, pstr, err
-	}
-
-	var newparams string
-	if v, ok := m["w"]; ok {
-		newparams += "w=" + fmt.Sprint(v)
-	}
-
-	if v, ok := m["h"]; ok {
-		if newparams != "" {
-			newparams += ","
-		}
-		newparams += "h=" + fmt.Sprint(v)
-	}
-
-	return true, path.String() + "&" + newparams, nil
 }
 
 func transformImage(fn files.Node, m map[string]int) (files.Node, error) {
