@@ -74,36 +74,26 @@ func (api *CoreAPI) ResolveNode(ctx context.Context, p path.Path) (ipld.Node, er
 				return nil, err
 			}
 
-			m, err := cid.SplitParameter(originparam)
+			node, err = createNewImageNode(ctx, api, originnode, originparam)
 			if err != nil {
 				return nil, err
 			}
-
-			ses := api.getSession(ctx)
-			f, err := unixfile.NewUnixfsFile(ctx, ses.dag, originnode)
-			if err != nil {
-				return nil, err
-			}
-
-			fn, err := transformImage(f, m)
-			if err != nil {
-				return nil, err
-			}
-
-			rp, err = api.Unixfs().Add(ctx, fn)
-			if err != nil {
-				return nil, err
-			}
-
-			node, err = api.dag.Get(ctx, rp.Cid())
-			if err != nil {
-				return nil, err
-			}
-
 		} else {
 			return nil, err
 		}
 	}
+
+	if param != "" {
+		reqcid, err := node.Cid().GetRequestCid()
+		if err == nil && node.Cid().String() == reqcid.String() {
+			fmt.Println("[Print Debug] If getting node is not request node.")
+			node, err = createNewImageNode(ctx, api, node, param)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	return node, nil
 }
 
@@ -212,34 +202,34 @@ func transformImage(fn files.Node, m map[string]int) (files.Node, error) {
 	return outnode, nil
 }
 
-func createNewImage(ctx context.Context, api *CoreAPI, parsedpstr string) (path.Path, error) {
-	pstr, params := cid.SeparateParameter(parsedpstr)
-	targetpath := path.New(pstr)
-	fn, err := api.Unixfs().Get(ctx, targetpath)
-	if err != nil {
-		return nil, err
-	}
-	defer fn.(io.Closer).Close()
-
-	m, err := cid.SplitParameter(params)
+func createNewImageNode(ctx context.Context, api *CoreAPI, node ipld.Node, param string) (ipld.Node, error) {
+	m, err := cid.SplitParameter(param)
 	if err != nil {
 		return nil, err
 	}
 
-	newfn, err := transformImage(fn, m)
-	if err != nil {
-		return nil, err
-	}
-	defer newfn.(io.Closer).Close()
-
-	newp, err := api.Unixfs().Add(ctx, newfn)
+	ses := api.getSession(ctx)
+	f, err := unixfile.NewUnixfsFile(ctx, ses.dag, node)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println("new image cid: " + newp.String())
+	fn, err := transformImage(f, m)
+	if err != nil {
+		return nil, err
+	}
 
-	return newp, nil
+	rp, err := api.Unixfs().Add(ctx, fn)
+	if err != nil {
+		return nil, err
+	}
+
+	newnode, err := api.dag.Get(ctx, rp.Cid())
+	if err != nil {
+		return nil, err
+	}
+
+	return newnode, nil
 }
 
 func saveLink(oldpath, newpath string) error {
