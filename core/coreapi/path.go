@@ -55,7 +55,12 @@ func (api *CoreAPI) ResolveNode(ctx context.Context, p path.Path) (ipld.Node, er
 		if ok, newcid := c.IsExistResizeCid(); ok {
 			newcid.SetRequest(c.StringWithParam())
 			c = newcid
+			fmt.Println("New Cid is " + c.String())
+		} else {
+			c.SetRequest(c.StringWithParam())
 		}
+
+		c.SetParam("")
 	}
 
 	node, err := api.dag.Get(ctx, c)
@@ -83,14 +88,11 @@ func (api *CoreAPI) ResolveNode(ctx context.Context, p path.Path) (ipld.Node, er
 		}
 	}
 
-	if param != "" {
-		reqcid, err := node.Cid().GetRequestCid()
-		if err == nil && node.Cid().String() == reqcid.String() {
-			fmt.Println("[Print Debug] If getting node is not request node.")
-			node, err = createNewImageNode(ctx, api, node, param)
-			if err != nil {
-				return nil, err
-			}
+	reqcid, err := node.Cid().GetRequestCid()
+	if err == nil && node.Cid().String() == reqcid.String() {
+		node, err = createNewImageNode(ctx, api, node, reqcid.GetParam())
+		if err != nil {
+			return nil, err
 		}
 	}
 
