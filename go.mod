@@ -124,9 +124,10 @@ require (
 
 require golang.org/x/image v0.0.0-20190802002840-cff245a6509b
 
-replace github.com/ipfs/go-cid v0.1.0 => ../../yoshikawa0711/go-cid
-
-replace github.com/ipfs/go-bitswap v0.6.0 => ../../yoshikawa0711/go-bitswap
+replace (
+	github.com/ipfs/go-bitswap v0.7.0 => ../../yoshikawa0711/go-bitswap
+	github.com/ipfs/go-cid v0.2.0 => ../../yoshikawa0711/go-cid
+)
 
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
