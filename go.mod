@@ -125,7 +125,7 @@ require (
 require golang.org/x/image v0.0.0-20190802002840-cff245a6509b
 
 replace (
-	github.com/ipfs/go-bitswap v0.7.0 => ../../yoshikawa0711/go-bitswap
+	github.com/ipfs/go-bitswap v0.9.0 => ../../yoshikawa0711/go-bitswap
 	github.com/ipfs/go-cid v0.2.0 => ../../yoshikawa0711/go-cid
 )
 
