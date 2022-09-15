@@ -264,6 +264,7 @@ require (
 
 replace (
 	github.com/ipfs/go-bitswap v0.9.0 => ../../yoshikawa0711/go-bitswap
+	github.com/ipfs/go-blockservice v0.4.0 => ../../yoshikawa0711/go-blockservice
 	github.com/ipfs/go-cid v0.2.0 => ../../yoshikawa0711/go-cid
 )
 

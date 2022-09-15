@@ -354,12 +354,12 @@ func getNode(ctx context.Context, api *CoreAPI, c cid.Cid) (ipld.Node, error) {
 }
 
 func resizeNode(ctx context.Context, api *CoreAPI, node ipld.Node, param string) (ipld.Node, error) {
-	node, err := createNewImageNode(ctx, api, node, param)
+	rnode, err := createNewImageNode(ctx, api, node, param)
 	if err != nil {
 		return nil, err
 	}
 
-	return node, nil
+	return rnode, nil
 }
 
 // use each cid and get original and resized node in parallel
@@ -403,18 +403,19 @@ func getNodeParallel(ctx context.Context, api *CoreAPI, c cid.Cid) (chan ipld.No
 	errch := make(chan error)
 
 	go func() {
-		param := c.GetParam()
-		c.SetParam("")
+		original := c
+		param := original.GetParam()
+		original.SetParam("")
 
-		node, err := getNode(ctx, api, c)
+		node, err := getNode(ctx, api, original)
 		if err != nil {
 			errch <- err
 		} else {
-			node, err = resizeNode(ctx, api, node, param)
+			rnode, err := resizeNode(ctx, api, node, param)
 			if err != nil {
 				errch <- err
 			} else {
-				nodech <- node
+				nodech <- rnode
 			}
 		}
 	}()
