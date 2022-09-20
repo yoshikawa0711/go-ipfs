@@ -187,6 +187,13 @@ func organizeParameter(param string) (string, error) {
 		newparam += "h=" + fmt.Sprint(v)
 	}
 
+	if v, ok := m["a"]; ok {
+		if newparam != "" {
+			newparam += ","
+		}
+		newparam += "a=" + fmt.Sprint(v)
+	}
+
 	return newparam, nil
 }
 
@@ -202,7 +209,7 @@ func splitParameter(params string) (map[string]int, error) {
 			return nil, fmt.Errorf("invalid parameter: %s", v)
 		}
 
-		if param[0] == "w" || param[0] == "h" {
+		if param[0] == "w" || param[0] == "h" || param[0] == "a" {
 
 			if _, ok := m[param[0]]; !ok {
 				var err error
@@ -220,9 +227,32 @@ func splitParameter(params string) (map[string]int, error) {
 			return nil, fmt.Errorf("invalid parameter: %s is not supported", param[0])
 		}
 	}
-
 	return m, nil
 
+}
+
+func calculateNewParameter(m map[string]int, width int, height int) (map[string]int, error) {
+	if v, ok := m["a"]; ok {
+		if !(v == 0 || v == 1) {
+			return m, fmt.Errorf("parameter a is equal 0 (spect fix) or 1 (not fix): v = %d", v)
+		}
+
+		// a=0 and set both of w and h
+		newWidth, isSetW := m["w"]
+		newHeight, isSetH := m["h"]
+		if v == 0 && isSetW && isSetH {
+			fmt.Println("you set aspect fix mode (a=0), and set w and h")
+			fmt.Println("ipfs transform image using w only, and h determine from image aspect")
+
+			newHeight = int((float64(height) / float64(width)) * float64(newWidth))
+			m["h"] = newHeight
+
+			fmt.Println("new parameter is w = " + fmt.Sprint(newWidth) + ", h = " + fmt.Sprint(newHeight))
+			return m, nil
+		}
+	}
+
+	return m, nil
 }
 
 func createNewImageNode(ctx context.Context, api *CoreAPI, node ipld.Node, param string) (ipld.Node, error) {
@@ -237,7 +267,7 @@ func createNewImageNode(ctx context.Context, api *CoreAPI, node ipld.Node, param
 		return nil, err
 	}
 
-	fn, err := transformImage(f, m)
+	fn, newparam, err := transformImage(f, m)
 	if err != nil {
 		return nil, err
 	}
@@ -252,19 +282,20 @@ func createNewImageNode(ctx context.Context, api *CoreAPI, node ipld.Node, param
 		return nil, err
 	}
 
-	fmt.Println("new cid is " + rp.Cid().String())
+	fmt.Println("new cid is " + newnode.Cid().String())
 	saveLink("/ipfs/"+node.Cid().String()+"&"+param, "/ipfs/"+newnode.Cid().String())
+	saveLink("/ipfs/"+node.Cid().String()+"&"+newparam, "/ipfs/"+newnode.Cid().String())
 
 	return newnode, nil
 }
 
-func transformImage(fn files.Node, m map[string]int) (files.Node, error) {
+func transformImage(fn files.Node, m map[string]int) (files.Node, string, error) {
 	f := files.ToFile(fn)
 
 	w, err := os.Create("resource.png")
 	_, err = io.Copy(w, f.(io.Reader))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer func() {
 		w.Close()
@@ -274,16 +305,29 @@ func transformImage(fn files.Node, m map[string]int) (files.Node, error) {
 	w, _ = os.Open("resource.png")
 	img, _, err := image.Decode(w)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	width, height := img.Bounds().Dx(), img.Bounds().Dy()
+
+	m, err = calculateNewParameter(m, width, height)
+	if err != nil {
+		return nil, "", err
+	}
+
+	newparam := ""
+
 	if v, ok := m["w"]; ok {
 		width = v
+		newparam += "w=" + fmt.Sprint(v)
 	}
 
 	if v, ok := m["h"]; ok {
 		height = v
+		if newparam != "" {
+			newparam += ","
+		}
+		newparam += "h=" + fmt.Sprint(v)
 	}
 
 	newimg := image.NewRGBA(image.Rect(0, 0, width, height))
@@ -291,28 +335,28 @@ func transformImage(fn files.Node, m map[string]int) (files.Node, error) {
 
 	output, err := os.Create("transformed.png")
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer os.Remove("transformed.png")
 
 	err = png.Encode(output, newimg)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	output.Close()
 
 	output, _ = os.Open("transformed.png")
 	stat, err := output.Stat()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	outnode, err := files.NewReaderPathFile("transformed.png", output, stat)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	return outnode, nil
+	return outnode, newparam, nil
 }
 
 func saveLink(oldpath, newpath string) error {
