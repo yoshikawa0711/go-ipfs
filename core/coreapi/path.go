@@ -240,12 +240,20 @@ func calculateNewParameter(m map[string]int, width int, height int) (map[string]
 		// a=0 and set both of w and h
 		newWidth, isSetW := m["w"]
 		newHeight, isSetH := m["h"]
-		if v == 0 && isSetW && isSetH {
-			fmt.Println("you set aspect fix mode (a=0), and set w and h")
-			fmt.Println("ipfs transform image using w only, and h determine from image aspect")
+		if v == 0 {
+			if isSetW && isSetH {
+				fmt.Println("you set aspect fix mode (a=0), and set w and h")
+				fmt.Println("ipfs transform image using w only, and h determine from image aspect")
+			}
+			if isSetW {
+				newHeight = int((float64(height) / float64(width)) * float64(newWidth))
+				m["h"] = newHeight
+			}
 
-			newHeight = int((float64(height) / float64(width)) * float64(newWidth))
-			m["h"] = newHeight
+			if isSetH && !isSetW {
+				newWidth = int((float64(width) / float64(height)) * float64(newHeight))
+				m["w"] = newWidth
+			}
 
 			fmt.Println("new parameter is w = " + fmt.Sprint(newWidth) + ", h = " + fmt.Sprint(newHeight))
 			return m, nil
